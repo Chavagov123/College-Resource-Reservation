@@ -1,5 +1,6 @@
 import streamlit as st
 from database import conn
+from sqlalchemy import text
 
 st.set_page_config(
     page_title="Resources",
@@ -9,7 +10,7 @@ st.set_page_config(
 st.title("Resource Management")
 
 st.header("Add a New Resource")
-locations = conn.query("SELECT name FROM Location")
+locations = conn.query("SELECT name FROM Location", ttl=0)
 location_names = [row['name'] for index, row in locations.iterrows()]
 
 with st.form("resource_form"):
@@ -27,11 +28,12 @@ with st.form("resource_form"):
                 try:
                     with conn.session as s:
                         s.execute(
-                            'INSERT INTO Resource (type, name, location_id, capacity) VALUES (:type, :name, :location_id, :capacity);',
+                            text('INSERT INTO Resource (type, name, location_id, capacity) VALUES (:type, :name, :location_id, :capacity);'),
                             params=dict(type=type, name=name, location_id=location_id, capacity=capacity)
                         )
                         s.commit()
                     st.success("Resource data has been inserted!")
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Error inserting resource data: {e}")
             else:
@@ -41,7 +43,7 @@ with st.form("resource_form"):
 
 st.header("All Resources")
 try:
-    resources_df = conn.query("SELECT * FROM Resource")
+    resources_df = conn.query("SELECT * FROM Resource", ttl=0)
     if resources_df.empty:
         st.write("No resources found.")
     else:

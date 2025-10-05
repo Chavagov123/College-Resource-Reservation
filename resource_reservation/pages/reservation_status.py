@@ -1,35 +1,44 @@
 import streamlit as st
-from database import get_db_connection
+from database import conn
+from sqlalchemy import text
 
-def manage_reservation_status():
-    db, cursor = get_db_connection()
+st.title("Reservation Status Manager")
 
-    st.title("Reservation Status Manager")
-
-    # Display existing reservation statuses
-    cursor.execute("SELECT * FROM ReservationStatus")
-    reservation_statuses = cursor.fetchall()
-
+# Display existing reservation statuses
+try:
+    reservation_statuses_df = conn.query("SELECT * FROM ReservationStatus", ttl=0)
     st.subheader("Existing Reservation Statuses")
-    st.table(reservation_statuses)
+    if reservation_statuses_df.empty:
+        st.write("No reservation statuses found.")
+    else:
+        st.table(reservation_statuses_df)
+except Exception as e:
+    st.error(f"Error fetching reservation statuses: {e}")
 
-    # Form to add a new reservation status
-    st.subheader("Add New Reservation Status")
-    new_status_name = st.text_input("New Status Name")
+# Form to add a new reservation status
+st.subheader("Add New Reservation Status")
+new_status_name = st.text_input("New Status Name")
 
-    if st.button("Add Reservation Status"):
-        if new_status_name:
+if st.button("Add Reservation Status"):
+    if new_status_name:
+        try:
             # Check if the status name already exists
-            cursor.execute("SELECT 1 FROM ReservationStatus WHERE status_name = %s", (new_status_name,))
-            if cursor.fetchone():
+            existing = conn.query(
+                "SELECT 1 FROM ReservationStatus WHERE status_name = :name",
+                params={"name": new_status_name},
+            )
+            if not existing.empty:
                 st.error("Status name already exists. Please choose a different name.")
             else:
-                # Insert the new status into the ReservationStatus table
-                cursor.execute("INSERT INTO ReservationStatus (status_name) VALUES (%s)", (new_status_name,))
-                db.commit()
+                with conn.session as s:
+                    s.execute(
+                        text("INSERT INTO ReservationStatus (status_name) VALUES (:name);"),
+                        params={"name": new_status_name},
+                    )
+                    s.commit()
                 st.success("New status added successfully!")
-        else:
-            st.error("Please enter a status name.")
-
-if __name__ == "__main__":
-    manage_reservation_status()
+                st.rerun()
+        except Exception as e:
+            st.error(f"Error adding reservation status: {e}")
+    else:
+        st.error("Please enter a status name.")

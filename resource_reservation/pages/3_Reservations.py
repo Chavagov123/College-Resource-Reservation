@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from database import conn
+from sqlalchemy import text
 
 st.set_page_config(
     page_title="Reservations",
@@ -10,7 +11,7 @@ st.set_page_config(
 st.title("Reservation Management")
 
 def fetch_all_ids(table, id_column):
-    df = conn.query(f"SELECT {id_column} FROM {table}")
+    df = conn.query(f"SELECT {id_column} FROM {table}", ttl=0)
     return [row[id_column] for index, row in df.iterrows()]
 
 st.header("Add a New Reservation")
@@ -38,7 +39,7 @@ with st.form("reservation_form"):
             try:
                 with conn.session as s:
                     s.execute(
-                        'INSERT INTO Reservation (start_time, end_time, resource_id, userid, status_id, attendees) VALUES (:start, :end, :res_id, :user_id, :stat_id, :attendees);',
+                        text('INSERT INTO Reservation (start_time, end_time, resource_id, userid, status_id, attendees) VALUES (:start, :end, :res_id, :user_id, :stat_id, :attendees);'),
                         params=dict(start=start_datetime, end=end_datetime, res_id=resource_id, user_id=user_id, stat_id=status_id, attendees=attendees)
                     )
                     s.commit()
@@ -51,7 +52,7 @@ with st.form("reservation_form"):
 
 st.header("All Reservations")
 try:
-    reservations_df = conn.query("SELECT * FROM Reservation")
+    reservations_df = conn.query("SELECT * FROM Reservation", ttl=0)
     if reservations_df.empty:
         st.write("No reservations found.")
     else:
@@ -69,7 +70,7 @@ with st.form("update_status_form"):
     if update_status_submitted:
         try:
             with conn.session as s:
-                s.execute('CALL UpdateReservationStatus(:res_id, :new_stat_id);', params=dict(res_id=reservation_id, new_stat_id=new_status_id))
+                s.execute(text('CALL UpdateReservationStatus(:res_id, :new_stat_id);'), params=dict(res_id=reservation_id, new_stat_id=new_status_id))
                 s.commit()
             st.success("Reservation status updated successfully.")
         except Exception as e:
@@ -83,7 +84,7 @@ with st.form("delete_reservation_form"):
     if delete_submitted:
         try:
             with conn.session as s:
-                s.execute('DELETE FROM Reservation WHERE Reservation_ID = :res_id;', params=dict(res_id=delete_reservation_id))
+                s.execute(text('DELETE FROM Reservation WHERE Reservation_ID = :res_id;'), params=dict(res_id=delete_reservation_id))
                 s.commit()
             st.success("Reservation deleted successfully.")
             st.rerun()

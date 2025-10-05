@@ -1,5 +1,6 @@
 import streamlit as st
 from database import conn
+from sqlalchemy import text
 
 st.set_page_config(
     page_title="Users",
@@ -23,17 +24,18 @@ with st.form("user_form"):
             try:
                 with conn.session as s:
                     s.execute(
-                        'INSERT INTO User (name, phno, role) VALUES (:name, :phno, :role);',
+                        text('INSERT INTO User (name, phno, role) VALUES (:name, :phno, :role);'),
                         params=dict(name=user_name, phno=phno, role=role)
                     )
                     s.commit()
                 st.success("User data has been inserted!")
+                st.rerun()
             except Exception as e:
                 st.error(f"Error inserting user data: {e}")
 
 st.header("All Users")
 try:
-    users_df = conn.query('SELECT * FROM user;')
+    users_df = conn.query('SELECT * FROM user;', ttl=0)
     if users_df.empty:
         st.write("No users found.")
     else:

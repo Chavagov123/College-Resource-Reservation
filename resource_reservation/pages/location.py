@@ -1,9 +1,6 @@
 import streamlit as st
-import mysql.connector
-
-from database import get_db_connection
-
-db,cursor= get_db_connection()
+from database import conn
+from sqlalchemy import text
 
 st.header("Location Information Form")
 
@@ -13,14 +10,16 @@ address = st.text_input("Address (Room and Building Floor)")
 
 # Create a button to submit the data
 if st.button("Submit Location"):
-    # Check if the name and address fields are not empty
     if name and address:
-        # Insert the data into the Location table
-        cursor = db.cursor()
-        insert_query = "INSERT INTO Location (name, address) VALUES (%s, %s)"
-        data = (name, address)
-        cursor.execute(insert_query, data)
-        db.commit()
-        st.success("Location data has been inserted!")
+        try:
+            with conn.session as s:
+                s.execute(
+                    text("INSERT INTO Location (name, address) VALUES (:name, :address);"),
+                    params={"name": name, "address": address},
+                )
+                s.commit()
+            st.success("Location data has been inserted!")
+        except Exception as e:
+            st.error(f"Error inserting location data: {e}")
     else:
         st.error("Please fill in all required fields.")

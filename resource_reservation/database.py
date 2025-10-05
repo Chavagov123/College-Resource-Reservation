@@ -1,6 +1,7 @@
 import streamlit as st
-import mysql.connector
+import pymysql
 
+pymysql.install_as_MySQLdb()
 conn = st.connection('mysql', type='sql')
 
 def get_reservation_count_per_resource():
