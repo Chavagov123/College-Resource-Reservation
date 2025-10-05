@@ -1,17 +1,9 @@
 import streamlit as st
 import mysql.connector
 
-def get_db_connection():
-    db = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="password",
-        database="resource_reservation_system"
-    )
-    cursor = db.cursor(buffered=True)
-    return db, cursor
+conn = st.connection('mysql', type='sql')
 
-def get_reservation_count_per_resource(db, cursor):
+def get_reservation_count_per_resource():
     # Execute the query
     query = """
         SELECT
@@ -27,14 +19,11 @@ def get_reservation_count_per_resource(db, cursor):
         ORDER BY
             reservation_count DESC;
     """
-    cursor.execute(query)
+    df = conn.query(query)
 
-    # Fetch the results
-    results = cursor.fetchall()
+    return df
 
-    return results
-
-def get_user_reservation_count(db, cursor, user_id):
+def get_user_reservation_count(user_id):
     query = """
         SELECT (
             SELECT COUNT(*)
@@ -42,11 +31,16 @@ def get_user_reservation_count(db, cursor, user_id):
             WHERE r.userid = u.userid
         ) AS reservation_count
         FROM User u
-        WHERE u.userid = %s
+        WHERE u.userid = :user_id
     """
-    cursor.execute(query, (user_id,))
-    result = cursor.fetchone()
-    if result:
-        return result[0]
+    df = conn.query(query, params={'user_id': user_id})
+    if not df.empty:
+        return df.iloc[0]['reservation_count']
 
     return 0
+
+def get_user_role(user_id):
+    df = conn.query("SELECT role FROM User WHERE userid = :user_id", params={'user_id': user_id})
+    if not df.empty:
+        return df.iloc[0]['role']
+    return "Unknown"
