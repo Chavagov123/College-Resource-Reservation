@@ -5,7 +5,7 @@ def get_db_connection():
     db = mysql.connector.connect(
         host="localhost",
         user="root",
-        password="Bindu@005",
+        password="password",
         database="resource_reservation_system"
     )
     cursor = db.cursor(buffered=True)
@@ -48,4 +48,5 @@ def get_user_reservation_count(db, cursor, user_id):
     result = cursor.fetchone()
     if result:
         return result[0]
+
     return 0
